@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026京都自由行 - 互動地圖</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        #header h1 {
+            margin-bottom: 10px;
+        }
+
+        #header p {
+            opacity: 0.95;
+        }
+
+        #controls {
+            background: white;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .day-btn {
+            padding: 10px 20px;
+            border: 2px solid #ff6b6b;
+            background: white;
+            color: #ff6b6b;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .day-btn:hover {
+            background: #ff6b6b;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+        }
+
+        .day-btn.active {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 180px);
+        }
+
+        .custom-popup {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+        }
+
+        .custom-popup h3 {
+            color: #ff6b6b;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .custom-popup p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .custom-popup .type {
+            background: #ff6b6b;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+
+        .custom-popup .info {
+            background: #fff5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .custom-popup .food {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .custom-popup .star {
+            color: #ffd700;
+        }
+
+        #legend {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 200px;
+        }
+
+        #legend h4 {
+            margin-bottom: 10px;
+            color: #ff6b6b;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid white;
+            box-shadow: 0 0 3px rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 768px) {
+            #legend {
+                bottom: 10px;
+                right: 10px;
+                padding: 10px;
+            }
+
+            .day-btn {
+                padding: 8px 15px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>🗺️ 2026京都自由行 互動地圖</h1>
+        <p>點擊按鈕切換每日行程 | 點擊地標查看詳細資訊</p>
+    </div>
+
+    <div id="controls">
+        <button class="day-btn active" onclick="showDay('all')">📍 完整路線</button>
+        <button class="day-btn" onclick="showDay(1)">Day 1 - 嵐山</button>
+        <button class="day-btn" onclick="showDay(2)">Day 2 - 天橋立一日遊</button>
+        <button class="day-btn" onclick="showDay(3)">Day 3 - 伏見稻荷+錦市場</button>
+        <button class="day-btn" onclick="showDay(4)">Day 4 - 清水寺+銀閣寺</button>
+        <button class="day-btn" onclick="showDay(5)">Day 5 - 金閣寺+下鴨神社</button>
+        <button class="day-btn" onclick="showDay(6)">Day 6 - 返程</button>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="legend">
+        <h4>🎨 圖例</h4>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FF6B6B;"></div>
+            <span>Day 1</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4ECDC4;"></div>
+            <span>Day 2</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #45B7D1;"></div>
+            <span>Day 3</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #96CEB4;"></div>
+            <span>Day 4</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FFEAA7;"></div>
+            <span>Day 5</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #DDA15E;"></div>
+            <span>Day 6</span>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let markersLayer;
+        let linesLayer;
+
+        // 景點資料（包含所有6天的景點）
+        const locations = {
+            day1: [
+                {
+                    name: '關西機場',
+                    position: [34.4347, 135.2441],
+                    info: '✈️ 抵達日本<br>⏰ 10:40抵達<br>🚄 搭乘HARUKA特快前往京都站',
+                    type: '機場',
+                    color: '#FF6B6B',
+                    icon: '✈️'
+                },
+                {
+                    name: '京都車站',
+                    position: [34.9859, 135.7581],
+                    info: '🚄 京都交通樞紐<br>🏨 住宿：京都八條都酒店（全程5晚）',
+                    type: '交通樞紐',
+                    color: '#FF6B6B',
+                    icon: '🚄'
+                },
+                {
+                    name: 'JR嵯峨嵐山站',
+                    position: [35.0164, 135.6780],
+                    info: '🚄 嵯峨野線約15分鐘<br>💴 票價：240日幣',
+                    type: '車站',
+                    color: '#FF6B6B',
+                    icon: '🚃'
+                },
+                {
+                    name: '嵯峨竹林',
+                    position: [35.0175, 135.6725],
+                    info: '<span class="star">⭐⭐⭐⭐⭐</span> 竹林之道<br>🎋 超人氣拍照景點<br>📸 晨間人較少',
+                    type: '自然景觀',
+                    color: '#FF6B6B',
+                    icon: '🎋'
+                },
+                {
+                    name: '野宮神社',
+                    position: [35.0176, 135.6732],
+                    info: '⛩️ 黑木鳥居神社<br>💕 結緣、學業之神',
+                    type: '神社',
+                    color: '#FF6B6B',
+                    icon: '⛩️'
+                },
+                {
+                    name: '天龍寺',
+                    position: [35.0156, 135.6736],
+                    info: '<span class="star">⭐⭐⭐⭐</span> 世界文化遺產<br>🏯 嵐山代表寺院<br>💴 門票：500日圓（庭園）',
+                    type: '世界遺產',
+                    color: '#FF6B6B',
+                    icon: '🏯'
+                },
+                {
+                    name: '嵐山よしむら',
+                    position: [35.0138, 135.6751],
+                    info: '<span class="food">🍜 蕎麥麵名店</span><br>⏰ 午餐推薦<br>🪟 可眺望渡月橋',
+                    type: '餐廳',
+                    color: '#FF6B6B',
+                    icon: '🍜'
+                },
+                {
+                    name: '嵐山大街',
+                    position: [35.0141, 135.6763],
+                    info: '🛍️ 購物美食街<br><span class="food">🍡 小吃、伴手禮</span>',
+                    type: '商店街',
+                    color: '#FF6B6B',
+                    icon: '🛍️'
+                },
+                {
+                    name: '渡月橋',
+                    position: [35.0133, 135.6757],
+                    info: '<span class="star">⭐⭐⭐⭐⭐</span> 嵐山地標<br>🌉 桂川上的木橋<br>📸 絕佳拍照點',
+                    type: '地標',
+                    color: '#FF6B6B',
+                    icon: '🌉'
+                },
+                {
+                    name: '嵐山公園',
+                    position: [35.0125, 135.6770],
+                    info: '🌳 河岸公園<br>🌸 賞櫻賞楓名所',
+                    type: '公園',
+                    color: '#FF6B6B',
+                    icon: '🌳'
+                }
+            ],
+            day2: [
+                {
+                    name: '天橋立',
+                    position: [35.5658, 135.1953],
+                    info: '<span class="star">⭐⭐⭐⭐⭐</span> 日本三景之一<br>🌉 沙洲奇景<br>🚌 易遊網一日遊',
+                    type: '日本三景',
+                    color: '#4ECDC4',
+                    icon: '🌉'
+                },
+                {
+                    name: '伊根舟屋',
+                    position: [35.6686, 135.2525],
+                    info: '<span class="star">⭐⭐⭐⭐</span> 海上茅草屋聚落<br>🏘️ 傳統漁村<br>🚤 可搭船遊覽',
+                    type: '傳統聚落',
+                    color: '#4ECDC4',
+                    icon: '🏘️'
+                },
+                {
+                    name: '美山合掌村',
+                    position: [35.2800, 135.5253],
+                    info: '<span class="star">⭐⭐⭐⭐</span> 茅草屋聚落<br>🏡 日本三大茅草屋之一<br>❄️ 冬季雪景美',
+                    type: '合掌村',
+                    color: '#4ECDC4',
+                    icon: '🏡'
+                }
+            ],
+            day3: [
+                {
+                    name: '伏見稻荷大社',
+                    position: [34.9671, 135.7727],
+                    info: '<span class="star">⭐⭐⭐⭐⭐</span> 千本鳥居<br>🦊 稻荷神總本社<br>⏰ 08:00-18:01<br>🚃 京阪本線伏見稻荷站',
+                    type: '神社',
+                    color: '#45B7D1',
+                    icon: '⛩️'
+                },
+                {
+                    name: '錦市場',
+                    position: [35.0051, 135.7652],
+                    info: '<span class="star">⭐⭐⭐⭐⭐</span> 京都廚房<br><span class="food">🍱 必吃：三木雞卵、田中雞卵<br>🍦 豆乳冰淇淋、章魚蛋</span><br>⏰ 09:00-18:00',
+                    type: '市場',
+                    color: '#45B7D1',
+                    icon: '🍱'
+                },
+                {
+                    name: '錦天滿宮',
+                    position: [35.0049, 135.7665],
+                    info: '⛩️ 學問之神<br>📍 位於錦市場內',
+                    type: '神社',
+                    color: '#45B7D1',
+                    icon: '⛩️'
+                },
+                {
+                    name: '二條城',
+                    position: [35.0142, 135.7481],
+                    info: '<span class="star">⭐⭐⭐⭐</span> 世界文化遺產<br>🏯 德川家康居城<br>🚪 鶯聲地板<br>⏰ 09:30-16:00',
+                    type: '世界遺產',
+                    color: '#45B7D1',
+                    icon: '🏯'
+                },
+                {
+                    name: '鴨川跳烏龜',
+                    position: [35.0030, 135.7715],
+                    info: '🐢 鴨川飛石<br>📸 趣味體驗',
+                    type: '景點',
+                    color: '#45B7D1',
+                    icon: '🐢'
+                }
+            ],
+            day4: [
+                {
+                    name: '清水寺',
+                    position: [34.9948, 135.7850],
+                    info: '<span class="star">⭐⭐⭐⭐⭐</span> 世界文化遺產<br>🏯 京都代表寺院<br>🌸 清水舞台<br>⏰ 06:00-18:00',
+                    type: '世界遺產',
+                    color: '#96CEB4',
+                    icon: '🏯'
+                },
+                {
+                    name: '名代豬排',
+                    position: [35.0000, 135.7700],
+                    info: '<span class="food">🍖 豬排名店</span><br>⏰ 午餐推薦',
+                    type: '餐廳',
+                    color: '#96CEB4',
+                    icon: '🍖'
+                },
+                {
+                    name: '平安神宮',
+                    position: [35.0162, 135.7825],
+                    info: '<span class="star">⭐⭐⭐⭐</span> 朱紅色大鳥居<br>⛩️ 祭祀桓武天皇<br>🌸 庭園美麗',
+                    type: '神社',
+                    color: '#96CEB4',
+                    icon: '⛩️'
+                },
+                {
+                    name: '銀閣寺',
+                    position: [35.0270, 135.7982],
+                    info: '<span class="star">⭐⭐⭐⭐</span> 世界文化遺產<br>🏯 東山慈照寺<br>🪨 銀沙灘、向月台',
+                    type: '世界遺產',
+                    color: '#96CEB4',
+                    icon: '🏯'
+                }
+            ],
+            day5: [
+                {
+                    name: '金閣寺',
+                    position: [35.0394, 135.7292],
+                    info: '<span class="star">⭐⭐⭐⭐⭐</span> 世界文化遺產<br>✨ 金箔貼面<br>🏯 鹿苑寺<br>⏰ 09:00-17:00<br>🚌 205號巴士至金閣寺道',
+                    type: '世界遺產',
+                    color: '#FFEAA7',
+                    icon: '✨'
+                },
+                {
+                    name: '下鴨神社',
+                    position: [35.0388, 135.7726],
+                    info: '<span class="star">⭐⭐⭐⭐</span> 世界文化遺產<br>⛩️ 賀茂御祖神社<br>🌲 糺之森散步<br>⏰ 06:30-17:00<br>🚌 205號巴士約30分鐘',
+                    type: '世界遺產',
+                    color: '#FFEAA7',
+                    icon: '⛩️'
+                },
+                {
+                    name: '鴨川跳烏龜',
+                    position: [35.0030, 135.7715],
+                    info: '🐢 鴨川飛石<br>📸 趣味體驗',
+                    type: '景點',
+                    color: '#FFEAA7',
+                    icon: '🐢'
+                },
+                {
+                    name: '豬一拉麵',
+                    position: [34.9900, 135.7600],
+                    info: '<span class="food">🍜 京都拉麵名店</span><br>⏰ 晚餐推薦',
+                    type: '餐廳',
+                    color: '#FFEAA7',
+                    icon: '🍜'
+                }
+            ],
+            day6: [
+                {
+                    name: '京都八條都酒店',
+                    position: [34.9859, 135.7581],
+                    info: '🏨 退房<br>⏰ 06:00<br>🛒 便利商店買早餐',
+                    type: '飯店',
+                    color: '#DDA15E',
+                    icon: '🏨'
+                },
+                {
+                    name: '京都車站',
+                    position: [34.9859, 135.7581],
+                    info: '🚄 前往關西機場<br>💴 HARUKA 2200日幣 或 巴士2800日幣',
+                    type: '車站',
+                    color: '#DDA15E',
+                    icon: '🚄'
+                },
+                {
+                    name: '關西機場',
+                    position: [34.4347, 135.2441],
+                    info: '✈️ 台灣虎航 IT285<br>⏰ 11:30起飛<br>🏠 14:00抵達高雄',
+                    type: '機場',
+                    color: '#DDA15E',
+                    icon: '✈️'
+                }
+            ]
+        };
+
+        // 初始化地圖
+        function initMap() {
+            map = L.map('map').setView([35.0116, 135.7681], 10);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            markersLayer = L.layerGroup().addTo(map);
+            linesLayer = L.layerGroup().addTo(map);
+
+            showDay('all');
+        }
+
+        function showDay(day) {
+            // 清除現有標記和路線
+            markersLayer.clearLayers();
+            linesLayer.clearLayers();
+
+            // 更新按鈕狀態
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            let locationsToShow = [];
+
+            if (day === 'all') {
+                // 顯示所有天的景點
+                Object.values(locations).forEach(dayLocations => {
+                    locationsToShow = locationsToShow.concat(dayLocations);
+                });
+            } else {
+                // 顯示特定天的景點
+                locationsToShow = locations['day' + day];
+            }
+
+            // 用於調整地圖視野
+            let bounds = [];
+
+            // 建立標記
+            locationsToShow.forEach((location, index) => {
+                // 計算順序號碼（單日顯示時從1開始，全部顯示時顯示emoji）
+                const displayNumber = day === 'all' ? location.icon : (index + 1);
+
+                // 自訂圖標
+                const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="
+                        background-color: ${location.color};
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: ${day === 'all' ? '16px' : '14px'};
+                        font-weight: ${day === 'all' ? 'normal' : 'bold'};
+                        color: white;
+                    ">${displayNumber}</div>`,
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
+                });
+
+                const marker = L.marker(location.position, { icon: customIcon })
+                    .bindPopup(`
+                        <div class="custom-popup">
+                            <h3>${index + 1}. ${location.name}</h3>
+                            <span class="type">${location.type}</span>
+                            <div class="info">${location.info}</div>
+                        </div>
+                    `, {
+                        maxWidth: 300
+                    });
+
+                marker.addTo(markersLayer);
+                bounds.push(location.position);
+            });
+
+            // 如果是單日行程，繪製路線
+            if (day !== 'all' && locationsToShow.length > 1) {
+                const path = locationsToShow.map(loc => loc.position);
+                L.polyline(path, {
+                    color: locationsToShow[0].color,
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '10, 5'
+                }).addTo(linesLayer);
+            }
+
+            // 調整地圖視野
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        // 頁面載入時初始化地圖
+        window.onload = initMap;
+    </script>
+</body>
+</html>
